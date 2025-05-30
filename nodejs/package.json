@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "TypeScript example for vt-talk",
   "scripts": {
-    "callbacks": "ts-node callbacks.ts"
+    "callbacks": "ts-node callbacks.ts",
+    "promises": "ts-node promises.ts"
   },
   "dependencies": {
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "undici": "^7.10.0"
   }
 }
