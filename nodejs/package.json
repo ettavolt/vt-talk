@@ -1,0 +1,11 @@
+{
+  "name": "vt-talk-nodejs",
+  "version": "1.0.0",
+  "description": "TypeScript example for vt-talk",
+  "scripts": {
+    "callbacks": "ts-node callbacks.ts"
+  },
+  "dependencies": {
+    "ts-node": "^10.9.1"
+  }
+}
