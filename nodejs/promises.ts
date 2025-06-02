@@ -19,7 +19,7 @@ async function processFile(filePath: string, requestUrl: string) {
     console.log(`Response body: ${responseBody}`);
 }
 
-processFile('../file.txt', 'https://httpbin.org/anything')
+processFile('../file.txt', 'http://localhost:8080/')
     .then(() => {
         console.log('Process completed');
     })

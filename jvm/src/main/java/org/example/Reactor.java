@@ -59,7 +59,7 @@ public class Reactor {
 	public static void main(String[] args) {
 		Reactor reactor = new Reactor();
 		reactor
-			.process("file.txt", "https://httpbin.org/anything")
+			.process("file.txt", "http://localhost:8080/")
 			.block();
 		out.println("Process completed");
 	}

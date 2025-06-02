@@ -52,7 +52,7 @@ public class VirtualThread {
 
 	public static void main(String[] args) {
 		var virtualThread = new VirtualThread();
-		virtualThread.process("file.txt", "https://httpbin.org/anything");
+		virtualThread.process("file.txt", "http://localhost:8080/");
 		out.println("Process completed");
 	}
 }

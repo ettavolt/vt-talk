@@ -15,7 +15,7 @@ func main() {
 
 	// Start process as a goroutine
 	go func() {
-		process("../file.txt", "https://httpbin.org/anything")
+		process("../file.txt", "http://localhost:8080/")
 		// Signal that process is complete
 		done <- true
 	}()

@@ -33,7 +33,7 @@ suspend fun process(fileName: String, requestUrl: String) = coroutineScope {
 
 fun main() {
     runBlocking {
-        process("file.txt", "https://httpbin.org/anything")
+        process("file.txt", "http://localhost:8080/")
     }
     println("Process completed")
 }

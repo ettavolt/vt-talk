@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import * as https from 'node:https';
+import * as http from 'node:http';
 
 // Function to process a file and send HTTP request
 function processFile(filePath: string, requestUrl: string, callback: (error?: Error) => void) {
@@ -13,7 +13,7 @@ function processFile(filePath: string, requestUrl: string, callback: (error?: Er
         console.log(`Successfully read ${data.length} bytes from file`);
 
         console.log(`Sending HTTP request to: ${requestUrl}`);
-        const req = https.request(requestUrl, {
+        const req = http.request(requestUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain',
@@ -41,7 +41,7 @@ function processFile(filePath: string, requestUrl: string, callback: (error?: Er
 }
 
 // Main execution
-processFile('../file.txt', 'https://httpbin.org/anything', (error) => {
+processFile('../file.txt', 'http://localhost:8080/', (error) => {
     if (error) {
         console.error('Process failed with error:', error);
         process.exit(1);
