@@ -3,6 +3,7 @@ package org.example;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import org.jetbrains.annotations.NotNull;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
@@ -56,11 +57,23 @@ public class Reactor {
 			.flatMap(this::acknowledge);
 	}
 
+	public void processOne() {
+		process("file.txt", "http://localhost:8080/").block();
+	}
+
+	public void processMany() {
+		Flux
+			.range(0, 100_000)
+			.flatMap(i -> process("file.txt", "http://localhost:8080/"))
+			.blockLast();
+	}
+
+
 	public static void main(String[] args) {
 		Reactor reactor = new Reactor();
-		reactor
-			.process("file.txt", "http://localhost:8080/")
-			.block();
+//		reactor.processOne();
+		reactor.processMany();
 		out.println("Process completed");
 	}
+
 }

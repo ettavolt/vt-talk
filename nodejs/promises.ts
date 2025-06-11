@@ -19,7 +19,11 @@ async function processFile(filePath: string, requestUrl: string) {
     console.log(`Response body: ${responseBody}`);
 }
 
-processFile('../file.txt', 'http://localhost:8080/')
+// processFile('../file.txt', 'http://localhost:8080/')
+Promise.allSettled(
+    Array.from({length:100_000})
+        .map(_ => processFile('../file.txt', 'http://localhost:8080/'))
+)
     .then(() => {
         console.log('Process completed');
     })

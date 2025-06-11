@@ -6,6 +6,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.runBlocking
@@ -33,7 +34,9 @@ suspend fun process(fileName: String, requestUrl: String) = coroutineScope {
 
 fun main() {
     runBlocking {
-        process("file.txt", "http://localhost:8080/")
+        repeat(100_000) {
+            process("file.txt", "http://localhost:8080/")
+        }
     }
     println("Process completed")
 }
