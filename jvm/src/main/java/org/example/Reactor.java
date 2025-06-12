@@ -14,12 +14,14 @@ import java.nio.file.Paths;
 import static java.lang.System.out;
 
 public class Reactor {
+	private final boolean logProcess;
+	public Reactor(boolean logProcess) {this.logProcess = logProcess;}
 	private final HttpClient httpClient = HttpClient.create();
 
 	@NotNull
 	private Mono<byte[]> readFile(String fileName) {
 		try {
-			out.println("Reading file: " + fileName);
+			if (logProcess) out.println("Reading file: " + fileName);
 			return Mono.just(Files.readAllBytes(Paths.get(fileName)));
 		} catch (IOException e) {
 			return Mono.error(e);
@@ -28,9 +30,9 @@ public class Reactor {
 
 	@NotNull
 	private Mono<String> postBytes(String requestUrl, byte[] bytes) {
-		out.println("Successfully read " + bytes.length + " bytes from the file.");
+		if (logProcess) out.println("Successfully read " + bytes.length + " bytes from the file.");
 
-		out.println("Sending HTTP request to: " + requestUrl);
+		if (logProcess) out.println("Sending HTTP request to: " + requestUrl);
 		return httpClient
 			.headers(headers -> {
 				headers.set(HttpHeaderNames.CONTENT_TYPE, "text/plain");
@@ -40,18 +42,18 @@ public class Reactor {
 			.uri(requestUrl)
 			.send(Mono.just(Unpooled.wrappedBuffer(bytes)))
 			.responseSingle((response, body) -> {
-				out.println("Received response with status code: " + response.status().code());
+				if (logProcess) out.println("Received response with status code: " + response.status().code());
 				return body.asString();
 			});
 	}
 
 	@NotNull
-	private Mono<Void> acknowledge(String response) {
-		out.println("Response body: " + response);
-		return Mono.empty();
+	private Mono<Integer> acknowledge(String response) {
+		if (logProcess) out.println("Response body: " + response);
+		return Mono.just(1);
 	}
 
-	public Mono<Void> process(String fileName, String requestUrl) {
+	public Mono<Integer> process(String fileName, String requestUrl) {
 		return readFile(fileName)
 			.flatMap(bytes -> postBytes(requestUrl, bytes))
 			.flatMap(this::acknowledge);
@@ -62,15 +64,19 @@ public class Reactor {
 	}
 
 	public void processMany() {
-		Flux
-			.range(0, 100_000)
+		var wanted = 100_000;
+		var successes = Flux
+			.range(0, wanted)
 			.flatMap(i -> process("file.txt", "http://localhost:8080/"))
-			.blockLast();
+			.onErrorResume(e -> Mono.just(0))
+			.reduce(0, Integer::sum)
+			.block();
+		out.println("S:" + successes + " F:" + (wanted - successes));
 	}
 
 
 	public static void main(String[] args) {
-		Reactor reactor = new Reactor();
+		Reactor reactor = new Reactor(false);
 //		reactor.processOne();
 		reactor.processMany();
 		out.println("Process completed");
