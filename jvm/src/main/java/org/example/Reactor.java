@@ -5,6 +5,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 
 import java.io.IOException;
@@ -64,11 +65,12 @@ public class Reactor {
 	}
 
 	public void processMany() {
-		var wanted = 100_000;
+		var wanted = 1_000_000;
 		var successes = Flux
 			.range(0, wanted)
-			.flatMap(i -> process("file.txt", "http://localhost:8080/"))
+			.flatMap(i -> process("file.txt", "http://localhost:8080/"), 100)
 			.onErrorResume(e -> Mono.just(0))
+			.subscribeOn(Schedulers.boundedElastic())
 			.reduce(0, Integer::sum)
 			.block();
 		out.println("S:" + successes + " F:" + (wanted - successes));
@@ -76,6 +78,7 @@ public class Reactor {
 
 
 	public static void main(String[] args) {
+//		System.setProperty("reactor.schedulers.defaultBoundedElasticOnVirtualThreads", "true");
 		Reactor reactor = new Reactor(false);
 //		reactor.processOne();
 		reactor.processMany();

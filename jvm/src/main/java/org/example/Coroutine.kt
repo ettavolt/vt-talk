@@ -5,38 +5,56 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.invoke
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
 import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 val client = HttpClient(CIO)
+const val logProcess = false
 
 suspend fun process(fileName: String, requestUrl: String) = coroutineScope {
     val bytes = Dispatchers.IO.invoke {
-        println("Reading file: $fileName")
+        if (logProcess) println("Reading file: $fileName")
         Files.readAllBytes(Paths.get(fileName))
     }
-    println("Successfully read ${bytes.size} bytes from the file.")
+    if (logProcess) println("Successfully read ${bytes.size} bytes from the file.")
 
-    println("Sending HTTP request to: $requestUrl")
+    if (logProcess) println("Sending HTTP request to: $requestUrl")
     val response = client.post(requestUrl) {
         header(HttpHeaders.ContentType, "text/plain")
         header(HttpHeaders.ContentLength, bytes.size)
         setBody(bytes)
     }
-    println("Received response with status code: ${response.status.value}")
-    println("Response body: ${response.bodyAsText()}")
+    if (logProcess) println("Received response with status code: ${response.status.value}")
+    if (logProcess) println("Response body: ${response.bodyAsText()}")
 }
 
+@OptIn(ExperimentalAtomicApi::class)
 fun main() {
+    val wanted = 1_000_000
+    val successes = AtomicInt(0)
+    val semaphore = Semaphore(200)
     runBlocking {
-        repeat(100_000) {
-            process("file.txt", "http://localhost:8080/")
+        withContext(Dispatchers.Default) {
+            coroutineScope {
+                repeat(wanted) {
+                    semaphore.acquire()
+                    launch {
+                        try {
+                            process("file.txt", "http://localhost:8080/")
+                            successes.addAndFetch(1)
+                        } catch (ignored: Exception) {
+                        } finally {
+                            semaphore.release()
+                        }
+                    }
+                }
+            }
         }
+        println("S:${successes.load()} F:${wanted - successes.load()}")
     }
     println("Process completed")
 }

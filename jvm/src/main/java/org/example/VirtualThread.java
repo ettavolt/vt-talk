@@ -54,14 +54,27 @@ public class VirtualThread {
 		}
 	}
 
+	public void processManySeq(String fileName, String requestUrl) throws IOException, InterruptedException {
+		var wanted = 100_000;
+		var successes = 0;
+		try {
+			for (int i = 0; i < wanted; i++) {
+				doProcess(fileName, requestUrl);
+				successes++;
+			}
+		} finally {
+			out.println("S:" + successes + " F:" + (wanted - successes));
+		}
+	}
+
 	public void processMany(String fileName, String requestUrl) {
 		final var successes = new AtomicInteger(0);
-		var wanted = 100_000;
+		var wanted = 1_000_000;
 		try (var scope = new StructuredTaskScope<Void>()) {
-			var semaphore = new Semaphore(200);
+			var semaphore = new Semaphore(100);
 			for (int i = 0; i < wanted; i++) {
+				semaphore.acquire();
 				scope.fork(() -> {
-					semaphore.acquire();
 					try {
 						doProcess(fileName, requestUrl);
 						successes.incrementAndGet();
@@ -80,9 +93,10 @@ public class VirtualThread {
 		out.println("S:" + successes.get() + " F:" + (wanted - successes.get()));
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		var virtualThread = new VirtualThread(false);
 //		virtualThread.processOne("file.txt", "http://localhost:8080/");
+//		virtualThread.processManySeq("file.txt", "http://localhost:8080/");
 		virtualThread.processMany("file.txt", "http://localhost:8080/");
 		out.println("Process completed");
 	}

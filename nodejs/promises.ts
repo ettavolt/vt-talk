@@ -1,29 +1,41 @@
 import {readFile} from 'node:fs/promises';
 import {request} from 'undici';
 
+const logProcess = false;
+
 async function processFile(filePath: string, requestUrl: string) {
     const data = await readFile(filePath);
-    console.log(`Successfully read ${data.length} bytes from file`);
+    if (logProcess) console.log(`Successfully read ${data.length} bytes from file`);
 
-    console.log(`Sending HTTP request to: ${requestUrl}`);
+    if (logProcess) console.log(`Sending HTTP request to: ${requestUrl}`);
     const res = await request(requestUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'text/plain',
             'Content-Length': data.length.toString(),
         },
+        bodyTimeout: 10000,
+        headersTimeout: 10000,
         body: data,
     });
-    console.log(`Received response with status code: ${res.statusCode}`);
+    if (logProcess) console.log(`Received response with status code: ${res.statusCode}`);
     const responseBody = await res.body.text();
-    console.log(`Response body: ${responseBody}`);
+    if (logProcess) console.log(`Response body: ${responseBody}`);
 }
 
-// processFile('../file.txt', 'http://localhost:8080/')
+const wanted = 10_000;
+let successes = 0;
 Promise.allSettled(
-    Array.from({length:100_000})
-        .map(_ => processFile('../file.txt', 'http://localhost:8080/'))
+    Array.from({length: wanted})
+        .map(
+            _ => processFile('../file.txt', 'http://localhost:8080/')
+            .then(_ => successes++)
+        )
 )
+    .then(() => {
+        console.log(`S: ${successes} F:${wanted - successes}`);
+    })
+    // processFile('../file.txt', 'http://localhost:8080/')
     .then(() => {
         console.log('Process completed');
     })

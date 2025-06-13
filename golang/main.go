@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func main() {
 }
 
 func processOne() {
-	// Create a channel to signal when process is done
+	// Create a channel to signal when the process is done
 	done := make(chan bool)
 
 	// Start process as a goroutine
@@ -33,60 +34,88 @@ func processOne() {
 
 func processMany() {
 	successes := atomic.Int32{}
-	failures := atomic.Int32{}
 	wg := sync.WaitGroup{}
-	howMany := 100_000
+	howMany := 1_000_000
 	wg.Add(howMany)
 
+	sem := make(chan struct{}, 100)
+
 	for i := 0; i < howMany; i++ {
+		// Acquire a permit: blocks if the buffer is used up
+		sem <- struct{}{}
+
 		go func() {
+			defer func() {
+				// Release the permit: frees a spot in the buffer
+				<-sem
+				wg.Done()
+			}()
+
 			if process("../file.txt", "http://localhost:8080/") {
 				successes.Add(1)
-			} else {
-				failures.Add(1)
 			}
-			wg.Done()
 		}()
 	}
 
 	wg.Wait()
-	log.Printf("S: %d F: %d\n", successes.Load(), failures.Load())
+	log.Printf("S: %d F: %d\n", successes.Load(), int32(howMany)-successes.Load())
 }
+
+var logProcess = false
+var client = &http.Client{Timeout: time.Second * 10}
 
 func process(filePath string, url string) bool {
 	// Step 1: Read the file
-	log.Printf("Reading file: %s\n", filePath)
+	if logProcess {
+		log.Printf("Reading file: %s\n", filePath)
+	}
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Printf("Error opening file: %v\n", err)
+		if logProcess {
+			log.Printf("Error opening file: %v\n", err)
+		}
 		return false
 	}
 	defer file.Close()
 	data, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Failed to read file: %v\n", err)
+		if logProcess {
+			log.Printf("Failed to read file: %v\n", err)
+		}
 		return false
 	}
-	log.Printf("Successfully read %d bytes from file\n", len(data))
+	if logProcess {
+		log.Printf("Successfully read %d bytes from file\n", len(data))
+	}
 
 	// Step 2: Send HTTP request
-	log.Printf("Sending HTTP request to: %s\n", url)
-	resp, err := http.Post(url, "text/plain", bytes.NewReader(data))
+	if logProcess {
+		log.Printf("Sending HTTP request to: %s\n", url)
+	}
+	resp, err := client.Post(url, "text/plain", bytes.NewReader(data))
 	if err != nil {
-		log.Printf("Failed to send HTTP request: %v\n", err)
+		if logProcess {
+			log.Printf("Failed to send HTTP request: %v\n", err)
+		}
 		return false
 	}
 	defer resp.Body.Close()
 
 	// Step 3: Process the response
-	log.Printf("Received response with status code: %d\n", resp.StatusCode)
+	if logProcess {
+		log.Printf("Received response with status code: %d\n", resp.StatusCode)
+	}
 
 	// Read and print response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Failed to read response body: %v\n", err)
+		if logProcess {
+			log.Printf("Failed to read response body: %v\n", err)
+		}
 		return false
 	}
-	log.Printf("Response body: %s\n", respBody)
+	if logProcess {
+		log.Printf("Response body: %s\n", respBody)
+	}
 	return true
 }
