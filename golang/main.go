@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,8 +13,8 @@ import (
 )
 
 func main() {
-	//processOne()
-	processMany()
+	processOne()
+	//processMany()
 	log.Println("Process completed")
 }
 
@@ -23,9 +24,14 @@ func processOne() {
 
 	// Start process as a goroutine
 	go func() {
-		process("../file.txt", "http://localhost:8080/")
-		// Signal that process is complete
-		done <- true
+		err := process("../file.txt", "http://localhost:8080/")
+		if err != nil {
+			log.Printf("Failed to process: %+v\n", err)
+			done <- false
+		} else {
+			// Signal that process is complete
+			done <- true
+		}
 	}()
 
 	// Wait for the process to finish
@@ -51,8 +57,11 @@ func processMany() {
 				wg.Done()
 			}()
 
-			if process("../file.txt", "http://localhost:8080/") {
+			err := process("../file.txt", "http://localhost:8080/")
+			if err == nil {
 				successes.Add(1)
+			} else {
+				log.Printf("Failed to process: %+v\n", err)
 			}
 		}()
 	}
@@ -64,25 +73,19 @@ func processMany() {
 var logProcess = false
 var client = &http.Client{Timeout: time.Second * 10}
 
-func process(filePath string, url string) bool {
+func process(filePath string, url string) error {
 	// Step 1: Read the file
 	if logProcess {
 		log.Printf("Reading file: %s\n", filePath)
 	}
 	file, err := os.Open(filePath)
 	if err != nil {
-		if logProcess {
-			log.Printf("Error opening file: %v\n", err)
-		}
-		return false
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 	data, err := io.ReadAll(file)
 	if err != nil {
-		if logProcess {
-			log.Printf("Failed to read file: %v\n", err)
-		}
-		return false
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 	if logProcess {
 		log.Printf("Successfully read %d bytes from file\n", len(data))
@@ -94,10 +97,7 @@ func process(filePath string, url string) bool {
 	}
 	resp, err := client.Post(url, "text/plain", bytes.NewReader(data))
 	if err != nil {
-		if logProcess {
-			log.Printf("Failed to send HTTP request: %v\n", err)
-		}
-		return false
+		return fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -109,13 +109,10 @@ func process(filePath string, url string) bool {
 	// Read and print response body
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		if logProcess {
-			log.Printf("Failed to read response body: %v\n", err)
-		}
-		return false
+		return fmt.Errorf("failed to read response body: %w", err)
 	}
 	if logProcess {
 		log.Printf("Response body: %s\n", respBody)
 	}
-	return true
+	return nil
 }
