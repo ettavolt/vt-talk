@@ -8,8 +8,9 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.util.concurrent.*;
+import java.time.LocalTime;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EchoServer {
@@ -18,7 +19,7 @@ public class EchoServer {
 		new EchoServer().start();
 	}
 
-	private void doHandle(HttpExchange exchange) throws IOException {
+	private void doHandle(HttpExchange exchange) {
 		try {
 			var buf = new ByteArrayOutputStream();
 			var writer = new PrintWriter(buf, true, StandardCharsets.UTF_8);
@@ -79,7 +80,7 @@ public class EchoServer {
 				var rps = successes.getAndSet(0);
 				var eps = failures.getAndSet(0);
 				if (rps > 0 || eps > 0) {
-					System.out.println(ZonedDateTime.now() + " " + rps + " " + eps);
+					System.out.println(LocalTime.now() + " " + rps + " " + eps);
 					lineBreakForZero = true;
 				} else if (lineBreakForZero) {
 					System.out.println();
