@@ -3,8 +3,7 @@ package org.example;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import org.jetbrains.annotations.NotNull;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.*;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 
@@ -61,6 +60,7 @@ public class Reactor {
 	}
 
 	public void processOne() {
+		Hooks.onOperatorDebug();
 		process("file.txt", "http://localhost:8080/").block();
 	}
 
