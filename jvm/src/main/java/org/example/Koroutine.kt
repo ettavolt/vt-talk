@@ -29,7 +29,8 @@ suspend fun process(fileName: String, requestUrl: String) = coroutineScope {
         setBody(bytes)
     }
     if (logProcess) println("Received response with status code: ${response.status.value}")
-    if (logProcess) println("Response body: ${response.bodyAsText()}")
+    val body = response.bodyAsText()
+    if (logProcess) println("Response body: $body")
 }
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -38,6 +39,7 @@ fun main() {
     val successes = AtomicInt(0)
     val semaphore = Semaphore(200)
     runBlocking {
+//        process("file.txt", "http://localhost:8080/")
         withContext(Dispatchers.Default) {
             coroutineScope {
                 repeat(wanted) {
