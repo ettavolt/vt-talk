@@ -69,12 +69,12 @@ public class VirtualThread {
 
 	public void processMany(String fileName, String requestUrl) {
 		final var successes = new AtomicInteger(0);
-		var wanted = 1_000_000;
-		try (var scope = new StructuredTaskScope<Void>()) {
-			var semaphore = new Semaphore(100);
+		var wanted = 100_000;
+		try (var scope = Executors.newVirtualThreadPerTaskExecutor()) {
+			var semaphore = new Semaphore(10_000);
 			for (int i = 0; i < wanted; i++) {
 				semaphore.acquire();
-				scope.fork(() -> {
+				scope.execute(() -> {
 					try {
 						doProcess(fileName, requestUrl);
 						successes.incrementAndGet();
@@ -83,12 +83,10 @@ public class VirtualThread {
 					} finally {
 						semaphore.release();
 					}
-					return null;
 				});
 			}
-			scope.join();
 		} catch (InterruptedException ignored) {
-			//Just exit.
+			// turning off
 		}
 		out.println("S:" + successes.get() + " F:" + (wanted - successes.get()));
 	}

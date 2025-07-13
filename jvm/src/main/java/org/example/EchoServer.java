@@ -65,8 +65,7 @@ public class EchoServer {
 		executor.submit(this::reportRps);
 		server.start();
 		System.out.println("Started " + this);
-		//Note: virtual threads cannot be "created, but not started".
-		Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown, this + "-shutdown"));
+		Runtime.getRuntime().addShutdownHook(Thread.ofVirtual().name(this + "-shutdown").unstarted(this::shutdown));
 	}
 
 	private void reportRps() {
