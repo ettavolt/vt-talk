@@ -155,18 +155,20 @@ VT+CDS 1.6 1111424  43
 (1211524-1111424)/(69-43)=3850
 
 Library & application threads:
-- VT Jetty Server request acceptors and selectors, on-demand processors, and a "keep-alive" PT in jetty.VirtualPool;
-- no application scheduler/executor threads, just a "trigger" VT in SimpleAsyncTaskScheduler;
-- no WebSocket MessageBroker threads, just a "trigger" VT; Jetty Server WS support uses the Server's pool.
-- no pool for HTTP Client backing Elastic RHLC;
-- no pools for RestTemplateBuilder-produced HttpClients;
-- VTs for Hikari connection adder, closer, leak detector, min connection rotator (all via VT-backed pools);
-- VT for the @Scheduled debugger acceptor-selector-executor;
-- but VT carriers (-Djdk.virtualThreadScheduler.parallelism=8, defaults to NC), unblocker, unparkers (timers) (
+- VT Jetty Server request acceptors and selectors, on-demand processors;
+    still has a "keep-alive" PT in jetty.VirtualPool and a thread backing maintenance scheduler,
+    which cannot be changed because JettyServletWebServerFactory#createServer is private.
+- No application scheduler/executor PT, just a "trigger" VT in SimpleAsyncTaskScheduler.
+- No WebSocket MessageBroker PT, just a "trigger" VT; Jetty Server WS support uses the Server's pool.
+- No pool for HTTP Client backing Elastic RHLC.
+- No pools for RestTemplateBuilder-produced HttpClients, but each has one HttpClientImpl.SelectorManager extends Thread.
+- VTs for Hikari connection adder, closer, leak detector, min connection rotator (all via VT-backed pools).
+- VT for the @Scheduled debugger acceptor-selector-executor.
+- But VT carriers (-Djdk.virtualThreadScheduler.parallelism=8, defaults to NC), unblocker, unparkers (timers) (
 jdk.virtualThreadScheduler.timerQueues, defaults to max(1, highestOneBit(NC/4))
-);
-- PT threads in Neo4J driver (although Netty has some [interesting development](https://micronaut.io/2025/06/30/transitioning-to-virtual-threads-using-the-micronaut-loom-carrier/));
-- AWS Clients are not enabled; SDK uses max(8, NC) for executor, 5 for scheduler for Async clients;
+).
+- PT threads in Neo4J driver (although Netty has some [interesting development](https://micronaut.io/2025/06/30/transitioning-to-virtual-threads-using-the-micronaut-loom-carrier/)).
+- AWS Clients are not enabled; SDK uses max(8, NC) for executor, 5 for scheduler for Async clients.
 - Twilio uses blocking Apache Http Components.
 
 

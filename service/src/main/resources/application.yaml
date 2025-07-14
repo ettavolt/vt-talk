@@ -1,0 +1,25 @@
+spring:
+  threads.virtual.enabled: true
+  task.scheduling:
+    simple.concurrency-limit: 2
+    pool.size: 2
+  http.client:
+    factory: jdk
+    connect-timeout: PT1S
+    read-timeout: PT1S
+  datasource:
+    hikari:
+      connection-timeout: 1000
+      maximum-pool-size: 8
+  jpa:
+    open-in-view: false
+
+server:
+  address: localhost
+  port: 8086
+  jetty:
+    threads:
+      acceptors: 1
+      selectors: 1
+      max: 8
+      min: 3

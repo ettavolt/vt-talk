@@ -1,0 +1,15 @@
+# Used directly by org.springframework.boot.test.web.client.LocalHostUriTemplateHandler#getRootUri,
+# injected into org.springframework.boot.test.web.client.TestRestTemplate
+# noinspection SpringBootApplicationYaml
+local.server.port: 8086
+
+spring:
+  jackson.parser:
+    # Not really useful - just tells spring.StreamSource@nativeHash
+    include-source-in-location: true
+  threads.virtual.enabled: true
+  http.client:
+    # Reuse for WebSockets
+    factory: jetty
+    connect-timeout: PT1S
+    read-timeout: PT1S
