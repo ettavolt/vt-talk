@@ -7,26 +7,20 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalTime;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class EchoServer {
 
-	public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+	public static void main(String[] args) throws IOException {
 		new EchoServer().start();
 	}
 
-	private final Random random = SecureRandom.getInstance("NativePRNGNonBlocking");
-	private final long maxSleepNanos = Duration.ofSeconds(5).toNanos();
 	private void doHandle(HttpExchange exchange) {
 		try {
-			Thread.sleep(Duration.ofNanos(random.nextLong(maxSleepNanos)));
 			var buf = new ByteArrayOutputStream();
 			var writer = new PrintWriter(buf, true, StandardCharsets.UTF_8);
 			writer.append("\nmethod: ").append(exchange.getRequestMethod()).append("\n");
@@ -63,7 +57,7 @@ public class EchoServer {
 		this::doHandle
 	);
 
-	public EchoServer() throws IOException, NoSuchAlgorithmException {
+	public EchoServer() throws IOException {
 		server.setExecutor(executor);
 	}
 
