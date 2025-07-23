@@ -1,14 +1,19 @@
 package org.example.spring
 
 import jakarta.persistence.EntityManager
+import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.thread.Threading
+import org.springframework.context.SmartLifecycle
+import org.springframework.core.env.Environment
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.messaging.simp.SimpMessagingTemplate
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.util.*
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit.NANOSECONDS
+import kotlin.time.Duration.Companion.seconds
 
 @Service
 class Notifier(
@@ -30,28 +35,56 @@ class Notifier(
 class Indexer(
     private val persistedRepository: PersistedRepository,
     private val indexedRepository: IndexedRepository,
-) {
-    private val queue = ConcurrentLinkedQueue<UUID>()
+    environment: Environment,
+) : SmartLifecycle {
+    private val queue = LinkedBlockingQueue<UUID>()
+    private val thread = (if (Threading.VIRTUAL.isActive(environment)) Thread.ofVirtual() else Thread.ofPlatform())
+        .name(this::class.simpleName).unstarted(this::process)
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     fun put(id: UUID) {
         queue.offer(id)
     }
 
-    @Scheduled(fixedRateString = "PT10S")
-    fun write() {
-        while (true) {
-            val batch = mutableListOf<UUID>()
-            for (counter in 0..10) {
-                val id = queue.poll()
-                if (id == null) break
+    private fun process() {
+        logger.atInfo().log("Started")
+        while (!thread.isInterrupted) cycle()
+        logger.atInfo().log("Stopped")
+    }
+
+    private fun cycle() {
+        val batch = mutableListOf<UUID>()
+        val waitTill = System.nanoTime() + 10.seconds.inWholeNanoseconds
+        try {
+            repeat(10) {
+                val id = queue.poll(waitTill - System.nanoTime(), NANOSECONDS) ?: return@repeat
                 batch.add(id)
             }
-            if (batch.isEmpty()) return
-            persistedRepository
-                .findByIdIn(batch)
-                .map(Persisted::forIndex)
-                .let(indexedRepository::saveAll)
+        } catch (_: InterruptedException) {
+            // Exit the loop
+            thread.interrupt()
+            // but first write what's left.
         }
+        // Start waiting for an element again
+        if (batch.isEmpty()) return
+
+        persistedRepository
+            .findByIdIn(batch)
+            .map(Persisted::forIndex)
+            .let(indexedRepository::saveAll)
     }
+
+    override fun stop(callback: Runnable) {
+        stop()
+        thread.join()
+        callback.run()
+    }
+
+    override fun stop() = thread.interrupt()
+
+    override fun start() = thread.start()
+
+    override fun isRunning(): Boolean = thread.isAlive
 }
 
 @Service
