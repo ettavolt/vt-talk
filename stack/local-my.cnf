@@ -1,0 +1,23 @@
+[mysqld]
+
+disable_log_bin
+
+key_buffer_size         = 16M
+max_allowed_packet      = 16M
+parser_max_mem_size     = 128M
+thread_cache_size       = 8
+performance_schema      = FALSE
+
+innodb_ft_total_cache_size=32M
+innodb_max_undo_log_size=32M
+innodb_undo_log_truncate=true
+
+port            = 3306
+bind-address    = 127.0.0.1
+tls_version =
+collation-server = utf8mb4_0900_ai_ci
+mysqlx          = OFF
+datadir         = DATA_DIR/
+socket          = DATA_DIR/mysqld.sock
+
+pid-file        = DATA_DIR/mysqld.pid

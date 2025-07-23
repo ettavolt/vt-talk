@@ -172,3 +172,14 @@ jdk.virtualThreadScheduler.timerQueues, defaults to max(1, highestOneBit(NC/4))
 - Twilio uses blocking Apache Http Components.
 
 
+VT:
+1st: match: 48 empty list, WS: 22 no receive, 3 no connect.
+2nd: WS: 16 no receive, 3 no connect.
+%MEM   RSS THCNT
+0.5 369544   57
+PT:
+1st: match: 50 empty list, WS: 49 no receive, 3 no connect.
+2nd: WS: 31 no receive, 3 no connect.
+%MEM   RSS THCNT
+0.5 372636   98
+

@@ -2,7 +2,10 @@ package org.example.itest
 
 import com.fasterxml.uuid.EthernetAddress
 import com.fasterxml.uuid.Generators
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
@@ -17,15 +20,22 @@ import strikt.assertions.*
 import java.time.Duration
 import java.util.*
 
+private const val repeats = 1000
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @ActiveProfiles("test")
+@Execution(ExecutionMode.CONCURRENT)
 class TestAll {
     private val uuidGenerator = Generators.timeBasedReorderedGenerator(EthernetAddress.fromPreferredInterface())
-    @Test
+
+    private fun makeMsg(discriminator: UUID? = null) = "Hello world ${discriminator?:uuidGenerator.generate()}!"
+
+    @RepeatedTest(repeats)
     fun testCreate(@Autowired restTemplate: TestRestTemplate) {
+        val uuid = uuidGenerator.generate()
         val response = restTemplate.postForEntity<String>("/create", Dto(
-            uuidGenerator.generate(),
-            "Hello world!"
+            uuid,
+            makeMsg(uuid),
         ))
         expectThat(response)
             .describedAs("Create Response")
@@ -37,7 +47,7 @@ class TestAll {
             }
     }
 
-    @Test
+    @RepeatedTest(repeats)
     fun testMatch(@Autowired restTemplate: TestRestTemplate) {
         val response = restTemplate.exchange<List<Dto>>(
             "/match?query={query}",
@@ -53,17 +63,20 @@ class TestAll {
                 get(ResponseEntity<*>::getBody)
                     .isA<List<Dto>>()
                     .map(Dto::payload)
-                    .contains("Hello world!")
+                    .first()
+                    .startsWith("Hello world")
             }
     }
 
-    @Test
+    @RepeatedTest(repeats)
     fun testWebsocket(
         @Autowired restTemplate: TestRestTemplate,
         @Autowired wsClient: WsClient,
     ) {
-        wsClient.subscribeTo("/topic/echo/callback").use { drainer ->
-            val response = restTemplate.postForEntity<String>("/websocket?where=callback&what={what}", null, mapOf(
+        val uuid = uuidGenerator.generate().toString()
+        wsClient.subscribeTo("/topic/echo/$uuid").use { drainer ->
+            val response = restTemplate.postForEntity<String>("/websocket?where={where}&what={what}", null, mapOf(
+                Pair("where", uuid),
                 Pair("what", "Hello world!"),
             ))
             expectThat(response)
@@ -74,16 +87,17 @@ class TestAll {
                     get(ResponseEntity<*>::getBody)
                         .isNull()
                 }
-            Thread.sleep(Duration.ofSeconds(1))
+            Thread.sleep(Duration.ofMillis(100))
             expectThat(drainer.drainPayloads())
                 .describedAs("Received messages")
                 .containsExactly("Hello world!")
         }
     }
 
-    @Test
+    @RepeatedTest(repeats)
     fun testEcho(@Autowired restTemplate: TestRestTemplate) {
-        val response = restTemplate.postForEntity<String>("/echo", "Hello world!")
+        val msg = makeMsg()
+        val response = restTemplate.postForEntity<String>("/echo", msg)
         expectThat(response)
             .describedAs("Echo Response")
             .and {
@@ -91,13 +105,14 @@ class TestAll {
                     .isEqualTo(HttpStatus.OK)
                 get(ResponseEntity<*>::getBody)
                     .isA<String>()
-                    .contains("Hello world!")
+                    .contains(msg)
             }
     }
 
-    @Test
+    @RepeatedTest(repeats)
     fun testProxy(@Autowired restTemplate: TestRestTemplate) {
-        val response = restTemplate.postForEntity<String>("/proxy", "Hello world!")
+        val msg = makeMsg()
+        val response = restTemplate.postForEntity<String>("/proxy", msg)
         expectThat(response)
             .describedAs("Proxied Echo Response")
             .and {
@@ -105,7 +120,7 @@ class TestAll {
                     .isEqualTo(HttpStatus.OK)
                 get(ResponseEntity<*>::getBody)
                     .isA<String>()
-                    .contains("Hello world!")
+                    .contains(msg)
             }
     }
 }
