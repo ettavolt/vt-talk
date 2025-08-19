@@ -22,14 +22,14 @@ func processOne() {
 	// Create a channel to signal when the process is done
 	done := make(chan bool)
 
-	// Start process as a goroutine
+	// Start the process as a goroutine
 	go func() {
 		err := process("../file.txt", "http://localhost:8080/")
 		if err != nil {
 			log.Printf("Failed to process: %+v\n", err)
 			done <- false
 		} else {
-			// Signal that process is complete
+			// Signal that the process is complete
 			done <- true
 		}
 	}()
@@ -70,7 +70,7 @@ func processMany() {
 	log.Printf("S: %d F: %d\n", successes.Load(), int32(howMany)-successes.Load())
 }
 
-var logProcess = false
+var logProcess = true
 var client = &http.Client{Timeout: time.Second * 10}
 
 func process(filePath string, url string) error {

@@ -13,7 +13,7 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 val client = HttpClient(CIO)
-const val logProcess = false
+const val logProcess = true
 
 suspend fun process(fileName: String, requestUrl: String) = coroutineScope {
     val bytes = Dispatchers.IO.invoke {
@@ -39,8 +39,8 @@ fun main() {
     val successes = AtomicInt(0)
     val semaphore = Semaphore(200)
     runBlocking {
-//        process("file.txt", "http://localhost:8080/")
-        withContext(Dispatchers.Default) {
+        process("file.txt", "http://localhost:8080/")
+        /*withContext(Dispatchers.Default) {
             coroutineScope {
                 repeat(wanted) {
                     semaphore.acquire()
@@ -56,7 +56,7 @@ fun main() {
                 }
             }
         }
-        println("S:${successes.load()} F:${wanted - successes.load()}")
+        println("S:${successes.load()} F:${wanted - successes.load()}")*/
     }
     println("Process completed")
 }

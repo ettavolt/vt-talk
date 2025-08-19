@@ -79,9 +79,9 @@ public class Reactor {
 
 	public static void main(String[] args) {
 //		System.setProperty("reactor.schedulers.defaultBoundedElasticOnVirtualThreads", "true");
-		Reactor reactor = new Reactor(false);
-//		reactor.processOne();
-		reactor.processMany();
+		Reactor reactor = new Reactor(true);
+		reactor.processOne();
+//		reactor.processMany();
 		out.println("Process completed");
 	}
 

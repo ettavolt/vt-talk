@@ -71,31 +71,35 @@ public class VirtualThread {
 		final var successes = new AtomicInteger(0);
 		var wanted = 100_000;
 		try (var scope = Executors.newVirtualThreadPerTaskExecutor()) {
-			var semaphore = new Semaphore(10_000);
+//			var semaphore = new Semaphore(10_000);
 			for (int i = 0; i < wanted; i++) {
-				semaphore.acquire();
 				scope.execute(() -> {
+//					try {
+//						semaphore.acquire();
+//					} catch (InterruptedException e) {
+//						return;
+//					}
 					try {
 						doProcess(fileName, requestUrl);
 						successes.incrementAndGet();
 					} catch (Exception ignored) {
 						//No rethrowing, so that the stack traces don't accumulate on the heap.
-					} finally {
-						semaphore.release();
+//					} finally {
+//						semaphore.release();
 					}
 				});
 			}
-		} catch (InterruptedException ignored) {
+//		} catch (InterruptedException ignored) {
 			// turning off
 		}
 		out.println("S:" + successes.get() + " F:" + (wanted - successes.get()));
 	}
 
 	public static void main(String[] args) throws IOException, InterruptedException {
-		var virtualThread = new VirtualThread(false);
-//		virtualThread.processOne("file.txt", "http://localhost:8080/");
+		var virtualThread = new VirtualThread(true);
+		virtualThread.processOne("file.txt", "http://localhost:8080/");
 //		virtualThread.processManySeq("file.txt", "http://localhost:8080/");
-		virtualThread.processMany("file.txt", "http://localhost:8080/");
+//		virtualThread.processMany("file.txt", "http://localhost:8080/");
 		out.println("Process completed");
 	}
 }
