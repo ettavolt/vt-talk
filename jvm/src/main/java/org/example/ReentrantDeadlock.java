@@ -5,7 +5,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class Deadlock {
+public class ReentrantDeadlock {
 	private final Lock lock1 = new ReentrantLock();
 	private final Semaphore planner = new Semaphore(0, true);
 	private final Lock lock2 = new ReentrantLock();
@@ -61,6 +61,6 @@ public class Deadlock {
 
 	// Watch https://bugs.openjdk.org/browse/JDK-8356870
 	public static void main(String[] args) {
-		new Deadlock().launch();
+		new ReentrantDeadlock().launch();
 	}
 }

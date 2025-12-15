@@ -87,7 +87,7 @@ Q?
 Finally, being true to itself in slow to start and warm up, but then fast to run, JVM got Virtual Threads in 2023 (v21)
 with one significant obstacle to the adoption removed in 2025 (v24). As we can see in this example, the code looks
 100% synchronous, and in fact, we can run it synchronously on the main thread. Virtual Threads also produce the usual looking
-stack traces; however, they are not visible in the regular thread dumps until [v25](https://bugs.openjdk.org/browse/JDK-8356870).
+stack traces; however, they were not visible in the regular thread dumps until [v25](https://bugs.openjdk.org/browse/JDK-8356870).
 Let's experiment with this new Java's feature. To start, let's try to run 100_000 requests sequentially.
 The echo server has a counter for the requests completed successfully or not over roughly a second.
 Sequential execution gives us about X RPS. Next, let's try to run all with a thread-per-request style.
@@ -109,7 +109,7 @@ I would say, Virtual Threads are well done, because the JVM can manage 1_000_000
 However, as the Project Loom's authors are tirelessly warning us, they can't make a system work faster, they can only help
 sharing the existing resources by concurrent tasks.
 
-One more experiment: let's add a random delay before sending the echo response. Uniform randomness out of 5 should yield
+One more experiment: let's add a random delay before sending the echo response. Uniform randomness out of 5s should yield
 us an average delay of 2.5s. If we have only 10_000 concurrent requests, RPS should be around 4_000.
 Yes, this is how it works. If we log the failed requests, we'll see that they all fail at reading the response.
 I'd say this is caused by my system not being tuned for such kind of stress testing, i.e. it's not JVM's fault.
@@ -120,7 +120,7 @@ Kotlin's coroutines can't compete in terms of concurrency, staying at the level 
 
 Q?
 
-How to use it in one's project? I've also made a small example Spring Web application (servlet-based) to showcase
+How to use it in one's project? I've made a small example Spring Web application (servlet-based) to showcase
 how different parts could be configured to use virtual threads. The app has the following endpoints:
 echo, proxy (to the echo server), write a simple entity to the database,
 run a match against index in Elasticsearch, and send something over a web socket.
@@ -252,10 +252,21 @@ Tips on using VTs.
 6. Use v25+ to be able to get VTs in thread dumps.
 7. Reschedule a fixed delay task manually: `finally {TaskScheduler#schedule(Runnable task, Instant startTime)}`.
 8. Constrain the number of DB connections. Don't keep them open while communicating with other services.
-9. Use [ScopedValues](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/ScopedValue.html) (stable in v25+)
-    instead of ThreadLocals. They allow clean rebinding, are compatible with `jakarta.servlet.Filter`,
-    but not with `org.springframework.web.servlet.HandlerInterceptor`
+9. Use [ScopedValues](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/ScopedValue.html) (stable in v25)
+    instead of ThreadLocals. They allow clean rebinding, but are compatible only with `jakarta.servlet.Filter`,
+    and not with `org.springframework.web.servlet.HandlerInterceptor`
     or `org.springframework.web.context.request.WebRequestInterceptor`.
+
+A word on VTs and thread dumps. JVM's `jstack` and `jcmd <pid> Threads.dump` commands are able to find and print
+platform threads deadlocked on `java.util.concurrent.locks.Lock`. However, these commands only show mounted
+(and, maybe, pinned) VTs. But if everything goes well, a VT waiting for a lock/monitor is unmounted.
+It is otherwise visible in the output of `jcmd <pid> Thread.dump_to_file </path/to/file>` command.
+However, it doesn't analyze deadlocks, and, just like the dump, prints held monitors (used via `synchronized`),
+but doesn't print which locks a thread holds, only those that it attempts to take. So if we run the synchronized deadlock
+example, we can deduce the condition of the deadlock ourselves by looking at monitor addresses in the `Thread.dump_to_file`
+output. But if we use locks, there are only stack traces. Now recall that many libraries began to "support VTs"
+by replacing `synchronized` with Locks, until it became unneccessary in v24.
+
 
 I've also made a Node.js-promises echo-test example. It has one interesting property:
 if I ask it to make 100_000 requests, it cannot reach the stage of actually sending one.
