@@ -194,7 +194,7 @@ adding the `applicationTaskExecutor` and/or `taskScheduler`.
 
 There is also a PT for MySQL's connections cleaner, but we don't have any control over it.
 
-Other things that I know of but don't demonstrate here:
+There are a couple of other things that I don't demonstrate here:
 - Neo4J's driver is built on top of Netty, not sure if it can/should be switched to VTs
     (although Micronaut has some [interesting development](https://micronaut.io/2025/06/30/transitioning-to-virtual-threads-using-the-micronaut-loom-carrier/)).
 - AWS SDK has blocking clients backed by the blocking Apache Http Components (v4),
@@ -204,7 +204,7 @@ Other things that I know of but don't demonstrate here:
 Any Q?
 
 A word on limiting concurrency. The approach, which Hikari's team is promoting, is that there should be no more connections
-to than twice the number of cores on the DB server. Meaning, that's often just enough to load up the underlying storage.
+to the DB than twice the number of cores on the DB server. Meaning, that's often just enough to load up the underlying storage.
 Since "underlying storage" here is just RAM, I'm using only the number of connections equal to the number of cores.
 However, the app communicates with ElasticSearch and Echo server, so it can potentially handle more requests at the same time, 
 than there are available DB connections. To reflect this possibility, we can allow more requests to be accepted 
@@ -243,13 +243,24 @@ which is expected to be better performance-wise, as the request doesn't switch c
 
 Q?
 
+The measurements changed, however, when I run the service on one core and my user session
+(incl. all the supporting services) on the seven other cores. VT creates fewer platfrom threads
+but consumes more memory, both for the heap and the metaspace. It does seem to schedule tasks tighter,
+resulting in fewer test failures. WS test errors are many presumably because of the 500 ms wait limit.
+
+Overall, I would say, for an ordinary CRUD application VTs can give a better task scheduling.
+And, supposedly, the convenience of not dealing with Futures, Callbacks, Monos, Flows, suspensions, et cetera,
+together with the peace of mind that they will never be needed.
+
+Q?
+
 Tips on using VTs.
 1. [Check the official guide](https://docs.oracle.com/en/java/javase/24/core/virtual-threads.html#GUID-8AEDDBE6-F783-4D77-8786-AC5A79F517C0).
 2. Use arrow lambdas when spawning new threads to get the source line in the stack trace.
 3. Replace pool sizing with a semaphore.
 4. A running VT doesn't keep JVM from stopping. Join the executor or otherwise keep "main" waiting for an interrupt.
-5. Use v24+ to avoid problems around synchronized keyword.
-6. Use v25+ to be able to get VTs in thread dumps.
+5. Use HotSpot v24+ to avoid problems around object monitors.
+6. Use HotSpot v25+ to get VTs in thread dumps.
 7. Reschedule a fixed delay task manually: `finally {TaskScheduler#schedule(Runnable task, Instant startTime)}`.
 8. Constrain the number of DB connections. Don't keep them open while communicating with other services.
 9. Use [ScopedValues](https://docs.oracle.com/en/java/javase/24/docs/api/java.base/java/lang/ScopedValue.html) (stable in v25)
@@ -261,10 +272,10 @@ A word on VTs and thread dumps. JVM's `jstack` and `jcmd <pid> Threads.dump` com
 platform threads deadlocked on `java.util.concurrent.locks.Lock`. However, these commands only show mounted
 (and, maybe, pinned) VTs. But if everything goes well, a VT waiting for a lock/monitor is unmounted.
 It is otherwise visible in the output of `jcmd <pid> Thread.dump_to_file </path/to/file>` command.
-However, it doesn't analyze deadlocks, and, just like the dump, prints held monitors (used via `synchronized`),
-but doesn't print which locks a thread holds, only those that it attempts to take. So if we run the synchronized deadlock
+However, this tool doesn't analyze deadlocks, and, just like the dump, prints held monitors (used via `synchronized`),
+but doesn't print which locks are held, only those that a thread attempts to take. So if we run the synchronized deadlock
 example, we can deduce the condition of the deadlock ourselves by looking at monitor addresses in the `Thread.dump_to_file`
-output. But if we use locks, there are only stack traces. Now recall that many libraries began to "support VTs"
+output. But if we use locks, there are only stack traces to analyze. Now recall that many libraries began to "support VTs"
 by replacing `synchronized` with Locks, until it became unneccessary in v24.
 
 
