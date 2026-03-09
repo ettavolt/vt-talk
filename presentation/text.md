@@ -241,6 +241,10 @@ We can check that Jetty executed most requests on the same Virtual Thread that a
 ([EPC style](https://jetty.org/docs/jetty/12/programming-guide/arch/threads.html)),
 which is expected to be better performance-wise, as the request doesn't switch cores. At least not until it begins to block.
 
+I've also run a round of testing on OpenJ9. It starts with fewer threads, and a smaller RSS,
+but that is mostly because of a smaller initial heap size. It had a similar PC/PEC/EPC distribution,
+but performed a bit worse in WS tests.
+
 Q?
 
 The measurements changed, however, when I run the service on one core and my user session
@@ -277,6 +281,8 @@ but doesn't print which locks are held, only those that a thread attempts to tak
 example, we can deduce the condition of the deadlock ourselves by looking at monitor addresses in the `Thread.dump_to_file`
 output. But if we use locks, there are only stack traces to analyze. Now recall that many libraries began to "support VTs"
 by replacing `synchronized` with Locks, until it became unneccessary in v24.
+I was also reminded that there is more than one implementation of JLS. For example, there is OpenJ9.
+However, its diagnostic tools seem oblivious to the existence of Virtual Threads.
 
 
 I've also made a Node.js-promises echo-test example. It has one interesting property:
